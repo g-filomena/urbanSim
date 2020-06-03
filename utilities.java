@@ -11,15 +11,25 @@ import sim.util.geo.GeomPlanarGraphDirectedEdge;
 import sim.util.geo.MasonGeometry;
 import sim.field.geo.GeomVectorField;
 
-public class utilities {	
+public class Utilities {	
 	
 
 	// sort map
-	public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) 
+	public static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map, String method) 
 	{
-	    return map.entrySet()
+	   if (method.equals("descending")) return map.entrySet()
 	              .stream()
-	              .sorted(Map.Entry.comparingByValue(/*Collections.reverseOrder()*/))
+	              .sorted(Map.Entry.comparingByValue(Collections.reverseOrder()))
+	              .collect(Collectors.toMap(
+	                Map.Entry::getKey, 
+	                Map.Entry::getValue, 
+	                (e1, e2) -> e1, 
+	                LinkedHashMap::new
+	              ));
+		
+	   else return map.entrySet()
+	              .stream()
+	              .sorted(Map.Entry.comparingByValue())
 	              .collect(Collectors.toMap(
 	                Map.Entry::getKey, 
 	                Map.Entry::getValue, 
@@ -86,11 +96,13 @@ public class utilities {
 	
 	public static NodeGraph commonPrimalJunction(NodeGraph cen, NodeGraph otherCen)
 	{
+//		System.out.println(cen.getID());
 	    EdgeGraph edge = cen.primalEdge;
 	    EdgeGraph otherEdge = otherCen.primalEdge;
-	    	    
+	    
 	    if ((edge.u == otherEdge.u) | (edge.u == otherEdge.v)) return edge.u;
-	    else return edge.v;
+	    else if ((edge.v == otherEdge.v) | (edge.v == otherEdge.u)) return edge.v;
+	    else return null;
 	}
 	
 	public static class Path {
@@ -158,6 +170,7 @@ public class utilities {
 	public static NodeGraph previousJunction(ArrayList<GeomPlanarGraphDirectedEdge> path)
 	{
 		// from global graph
+		if (path.size() == 1) return (NodeGraph) path.get(0).getFromNode();
 		NodeGraph lastCen = ((EdgeGraph) path.get(path.size()-1).getEdge()).getDual(); 
 		NodeGraph otherCen = ((EdgeGraph) path.get(path.size()-2).getEdge()).getDual();
 		return commonPrimalJunction(lastCen, otherCen);
@@ -168,6 +181,17 @@ public class utilities {
 		ArrayList<NodeGraph> centroids = new ArrayList<NodeGraph> ();
 		for (GeomPlanarGraphDirectedEdge e: path) centroids.add(((EdgeGraph) e.getEdge()).getDual());
 		return centroids;
+	}
+	
+	public static ArrayList<NodeGraph> nodesFromPath(ArrayList<GeomPlanarGraphDirectedEdge> path)
+	{
+		ArrayList<NodeGraph> nodes = new ArrayList<NodeGraph> ();
+		for (GeomPlanarGraphDirectedEdge e: path) 
+		{
+			nodes.add(((EdgeGraph) e.getEdge()).u);
+			nodes.add(((EdgeGraph) e.getEdge()).v);
+		}
+		return nodes;
 	}
 	
 
@@ -194,8 +218,8 @@ public class utilities {
 	
 	public static Geometry viewField(NodeGraph originNode, NodeGraph destinationNode)
 	{	
-		Coordinate coordA = utilities.angleViewField(originNode, destinationNode, 30);
-		Coordinate coordB = utilities.angleViewField(originNode, destinationNode, -30);
+		Coordinate coordA = Utilities.angleViewField(originNode, destinationNode, 35);
+		Coordinate coordB = Utilities.angleViewField(originNode, destinationNode, -35);
 		GeometryFactory geometryFactory = new GeometryFactory();
 		MultiPoint points = geometryFactory.createMultiPoint(new Coordinate[]{originNode.getCoordinate(), coordA, coordB});
 		Geometry viewField = points.convexHull();

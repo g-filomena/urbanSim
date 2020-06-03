@@ -1,12 +1,15 @@
 package sim.app.geo.urbanSim;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import java.util.stream.Collectors;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateArrays;
+import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.planargraph.DirectedEdge;
@@ -30,8 +33,8 @@ import sim.util.geo.MasonGeometry;
  */
 public class Graph extends GeomPlanarGraph
 {
-	public ArrayList<EdgeGraph> edges = new ArrayList<EdgeGraph>();
-    static LinkedHashMap<NodeGraph, Double> centralityMap = new LinkedHashMap<NodeGraph, Double>(); 
+	public ArrayList<EdgeGraph> edgesGraph = new ArrayList<EdgeGraph>();
+    LinkedHashMap<NodeGraph, Double> centralityMap = new LinkedHashMap<NodeGraph, Double>(); 
 	public Graph()
     {
         super();
@@ -84,7 +87,7 @@ public class Graph extends GeomPlanarGraph
         edge.setNodes(u, v);
         edge.masonGeometry = wrappedLine;
         add(edge);
-        edges.add(edge);
+        edgesGraph.add(edge);
     }
     
 
@@ -113,8 +116,8 @@ public class Graph extends GeomPlanarGraph
     public Network getNetwork()
     {
         Network network = new Network(false); // false == not directed
-
-        for ( Object object : getEdges() )
+        Collection edges = getEdges();
+        for ( Object object : edges )
         {
             DirectedEdge edge = (DirectedEdge) object;
             network.addEdge(edge.getFromNode(), edge.getToNode(), edge);
@@ -131,26 +134,38 @@ public class Graph extends GeomPlanarGraph
     public void generateCentralityMap()
     {
     	LinkedHashMap<NodeGraph, Double> centralityMap = new LinkedHashMap<NodeGraph, Double>(); 
-    	for (Object o: this.nodeMap.values())
-    		{
-    			NodeGraph node = (NodeGraph) o;
-    			centralityMap.put(node, node.centrality);
-    		}
-    	Graph.centralityMap = (LinkedHashMap<NodeGraph, Double>) utilities.sortByValue(centralityMap);
+    	Collection nodes = this.nodeMap.values();
+    	for (Object o: nodes)
+		{
+			NodeGraph node = (NodeGraph) o;
+			centralityMap.put(node, node.centrality);
+		}
+    	this.centralityMap = (LinkedHashMap<NodeGraph, Double>) Utilities.sortByValue(centralityMap, "ascending");
     }
  
     
-    public ArrayList<NodeGraph> salientNodes(NodeGraph originNode, NodeGraph destinationNode, double distance, double percentile, String mode)
+    public ArrayList<NodeGraph> salientNodes(NodeGraph originNode, NodeGraph destinationNode, double lowL, double uppL, 
+    		double percentile, String mode)
 	{
     	
     	Geometry buffer;
-	   	if (destinationNode != null) buffer = utilities.smallestEnclosingCircle(originNode, destinationNode);
-    	else buffer = originNode.masonGeometry.geometry.buffer(distance);
-	    
 	   	ArrayList<NodeGraph> containedNodes = new ArrayList<NodeGraph>();
-	    containedNodes = this.getContainedNodes(buffer); 	    
-	    LinkedHashMap<NodeGraph, Double> SpatialfilteredMap =  filterCentralityMap(centralityMap, containedNodes);
-	    if ((SpatialfilteredMap.size() == 0) || (SpatialfilteredMap == null)) return null;
+	   	
+	   	if (destinationNode != null && lowL == 0) 
+   		{
+   			buffer = Utilities.smallestEnclosingCircle(originNode, destinationNode);
+   			containedNodes = this.getContainedNodes(buffer); 
+   		}
+    	else if (destinationNode != null && lowL == 0)
+    	{
+    		buffer = originNode.masonGeometry.geometry.buffer(uppL);
+    		containedNodes = this.getContainedNodes(buffer); 
+    	}
+    	else if (lowL != 0) containedNodes = this.getWithinNodes(originNode, lowL, uppL);
+
+	   	if (containedNodes.size() == 0 || containedNodes == null) return null;
+	    LinkedHashMap<NodeGraph, Double> SpatialfilteredMap = filterCentralityMap(centralityMap, containedNodes);
+	    if (SpatialfilteredMap.size() == 0 || SpatialfilteredMap == null) return null;
 
 	    int position;
 	    double min_value = 0.0;
@@ -180,7 +195,8 @@ public class Graph extends GeomPlanarGraph
     public ArrayList<NodeGraph> getContainedNodes(Geometry g)
     {
     	ArrayList<NodeGraph> containedNodes = new ArrayList<NodeGraph>(); 
-        for (Object o: this.nodeMap.values())
+    	Collection nodes = this.nodeMap.values();
+        for (Object o: nodes )
 		{
         	Geometry geoNode = ((NodeGraph) o).masonGeometry.getGeometry();
 			if (g.contains(geoNode)) containedNodes.add((NodeGraph) o);
@@ -190,18 +206,20 @@ public class Graph extends GeomPlanarGraph
     
     public ArrayList<EdgeGraph> getContainedEdges(Geometry g)
     {
-    	ArrayList<EdgeGraph> containedEdges = new ArrayList<EdgeGraph>(); 
-        for (Object o: this.edges)
+    	ArrayList<EdgeGraph> containedEdges = new ArrayList<EdgeGraph>();
+    	ArrayList<EdgeGraph> edges = this.edgesGraph;
+
+        for (EdgeGraph edge: edges)
 		{
-        	Geometry geoEdge = ((EdgeGraph) o).masonGeometry.geometry;
-			if (g.contains(geoEdge)) containedEdges.add((EdgeGraph) o);
+        	Geometry geoEdge = edge.masonGeometry.geometry;
+			if (g.contains(geoEdge)) containedEdges.add(edge);
 		}
         return containedEdges;
 	}
     
     public ArrayList<EdgeGraph> getEdges()
     {
-        return this.edges;
+        return this.edgesGraph;
 	}
 
 	public static LinkedHashMap<NodeGraph, Double> filterCentralityMap(LinkedHashMap<NodeGraph, Double> map, ArrayList<NodeGraph> filter)
@@ -216,17 +234,42 @@ public class Graph extends GeomPlanarGraph
 	
 	public ArrayList<EdgeGraph> edgesWithinSpace(NodeGraph originNode, NodeGraph destinationNode)
 	{	
-		Double radius = utilities.nodesDistance(originNode,  destinationNode)*0.25;
+		Double radius = Utilities.nodesDistance(originNode,  destinationNode)*1.50;
 		if (radius < 500) radius = 500.0;
 		Geometry bufferOrigin = originNode.masonGeometry.geometry.buffer(radius);
-		Geometry bufferDestination = destinationNode.masonGeometry.geometry.buffer(500);
+		Geometry bufferDestination = destinationNode.masonGeometry.geometry.buffer(radius);
 		Geometry convexHull = bufferOrigin.union(bufferDestination).convexHull();
 		
 		ArrayList<EdgeGraph> containedEdges = this.getContainedEdges(convexHull);
 		return containedEdges;
 	}
-					
+	
+    public ArrayList<NodeGraph> getWithinNodes(NodeGraph originNode, double lowL, double uppL)
+    {
+        Geometry bufferS = originNode.masonGeometry.geometry.buffer(lowL);
+        Geometry bufferB = originNode.masonGeometry.geometry.buffer(uppL);
+        Geometry space = bufferB.difference(bufferS);
+        return this.getContainedNodes(space);
+    }
+    
+    public ArrayList<NodeGraph> getWithinNodesOtherDistricts(NodeGraph originNode, double lowL, double uppL)
+    {
+        Geometry bufferL = originNode.masonGeometry.geometry.buffer(lowL);
+        Geometry bufferU = originNode.masonGeometry.geometry.buffer(uppL);
+        Geometry space = bufferU.difference(bufferL);
+        return this.filterOutDistrict(this.getContainedNodes(space), originNode.district);
+    }
+    
+   
+    public ArrayList<NodeGraph> filterOutDistrict(ArrayList<NodeGraph> nodes, int district)
+    {
+    	ArrayList<NodeGraph>  newNodes = new ArrayList<NodeGraph>(nodes);
+    	for(NodeGraph node : nodes) if (node.district == district) newNodes.remove(node);
+    	return newNodes;
+    	
+    }
 }
+
 
 
 

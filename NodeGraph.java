@@ -9,10 +9,12 @@ import java.util.Map;
 import java.util.Set;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.planargraph.DirectedEdge;
 import com.vividsolutions.jts.planargraph.DirectedEdgeStar;
 import com.vividsolutions.jts.planargraph.Node;
 import sim.util.geo.AttributeValue;
 import sim.util.geo.GeomPlanarGraphDirectedEdge;
+import sim.util.geo.GeomPlanarGraphEdge;
 import sim.util.geo.MasonGeometry;
 
 public class NodeGraph extends Node
@@ -39,6 +41,9 @@ public class NodeGraph extends Node
 	public List<Double> distances = new ArrayList<Double>();
 	public ArrayList<Integer> adjacentRegions = new ArrayList<Integer>();
 	public ArrayList<NodeGraph> adjacentEntries = new ArrayList<NodeGraph>();
+	public ArrayList<NodeGraph> adjacentNodes = new ArrayList<NodeGraph>();
+	public ArrayList<EdgeGraph> edges = new ArrayList<EdgeGraph>();
+	public ArrayList<GeomPlanarGraphDirectedEdge> outEdges = new ArrayList<GeomPlanarGraphDirectedEdge>();
 	
     public void setID(int nodeID)
     {
@@ -122,6 +127,13 @@ public class NodeGraph extends Node
     }
     
     
+//    public EdgeGraph getEdgeBetween(NodeGraph v)
+//    {
+//    	EdgeGraph edge = null;
+//		for (EdgeGraph e : this.edges) if (edge.getOppositeNode(this) == v) edge = e;
+//		return edge;
+//    }
+    
     public EdgeGraph getEdgeBetween(NodeGraph v)
     {
     	EdgeGraph edge = null;
@@ -130,11 +142,36 @@ public class NodeGraph extends Node
 		return edge;
     }
     
-    public ArrayList<EdgeGraph> getEdgesNode()
+    public ArrayList<EdgeGraph> getEdges()
+    {
+    	return this.edges;
+    }
+    
+    public ArrayList<GeomPlanarGraphDirectedEdge> getOutDirectedEdges()
+    {
+    	return this.outEdges;
+    }
+    
+    public void setNeighboouringComponents()
+    {
+    	this.edges = getEdgesNode();
+    	this.adjacentNodes = getAdjacentNodes();
+    	List<DirectedEdge> outEdges  = this.getOutEdges().getEdges();
+    	for (DirectedEdge e: outEdges) this.outEdges.add((GeomPlanarGraphDirectedEdge) e);
+    }
+    
+    public GeomPlanarGraphDirectedEdge getDirectedEdgeBetween(NodeGraph v)
+    {
+    	GeomPlanarGraphDirectedEdge edge = null;
+    	for (Object e: this.getOutEdges().getEdges()) if (((DirectedEdge) e).getToNode() == v) edge = (GeomPlanarGraphDirectedEdge) e;
+    	return edge;
+    }
+    
+    private ArrayList<EdgeGraph> getEdgesNode()
     {
     	ArrayList<EdgeGraph> edges = new ArrayList<EdgeGraph>();
-    	List out = this.getOutEdges().getEdges();
-    	Set outEdges = new HashSet(out);
+    	List<Object> out = this.getOutEdges().getEdges();
+    	Set<Object> outEdges = new HashSet<Object>(out);
     	for (Object o : outEdges)
     	{
     		EdgeGraph edge = (EdgeGraph) ((GeomPlanarGraphDirectedEdge) o).getEdge();
@@ -142,26 +179,28 @@ public class NodeGraph extends Node
     	}
     	return edges;
     }
+       
     
-    public ArrayList<NodeGraph> getOppositeNodes()
+    public ArrayList<NodeGraph> getAdjacentNodes()
     {
-    	ArrayList<NodeGraph> oppositeNodes = new ArrayList<NodeGraph>();
+    	ArrayList<NodeGraph> adjacentNodes = new ArrayList<NodeGraph>();
     	ArrayList<EdgeGraph> edges = getEdgesNode();
     	
         for (EdgeGraph e : edges)
         {
            NodeGraph opposite = (NodeGraph) e.getOppositeNode(this);
-           oppositeNodes.add(opposite);
+           adjacentNodes.add(opposite);
         }
            
-    	return oppositeNodes;
+    	return adjacentNodes;
     }
+    
     
     public ArrayList<Integer> getAdjacentRegion()
     {
     	if (!this.gateway) return null;
     	
-    	ArrayList<NodeGraph> oppositeNodes = new ArrayList<NodeGraph>(this.getOppositeNodes());
+    	ArrayList<NodeGraph> oppositeNodes = new ArrayList<NodeGraph>(this.getAdjacentNodes());
     	ArrayList<Integer> adjacentRegions = new ArrayList<Integer>();
     	
         for (NodeGraph opposite : oppositeNodes) 
@@ -178,59 +217,45 @@ public class NodeGraph extends Node
     }
     
     
-    public NodeGraph getDualNode(NodeGraph originNode, NodeGraph destinationNode, boolean regionalRouting)
+    public NodeGraph getDualNode(NodeGraph originNode, NodeGraph destinationNode, boolean regionalRouting, NodeGraph previousJunction)
     {	
     	NodeGraph dualNode = null;
-		double deviation = Double.MAX_VALUE;
+		double distance = Double.MAX_VALUE;
 		NodeGraph best = null;
-		
-		double destinationAngle = Angle.angle(originNode, destinationNode);
-		double originAngle = Angle.angle(destinationNode, originNode);
-
-		
+			
 	 	for (EdgeGraph edge : this.getEdgesNode())
 	 	{
-	 		if (edge.district == 999999 && regionalRouting) continue; // bridge between regions
+	 		
+	 		if ((edge.district == 999999) && (regionalRouting)) continue; // bridge between regions
 	 		dualNode = edge.getDual();
 	 		if (dualNode == null) continue;
+	 		
 	 		if (this != destinationNode)
 	 		{
-		 		double dualNodeAngle = Angle.angle(dualNode, destinationNode);
-		 		double cost = Angle.differenceAngles(dualNodeAngle, destinationAngle); 
-		 		if (cost < deviation)
+		 		double cost = Utilities.nodesDistance(dualNode, destinationNode);
+		 		if ((previousJunction != null) && ((previousJunction == dualNode.primalEdge.u) ||
+		 				(previousJunction == dualNode.primalEdge.v))) continue;
+
+		 		if (cost < distance)
 		 		{
-		 			deviation = cost;
+		 			distance = cost;
 		 			best = dualNode;
 		 		}
 	 		}
 	 		else 
 	 		{
-		 		double dualNodeAngle = Angle.angle(dualNode, originNode);
-		 		double cost = Angle.differenceAngles(dualNodeAngle, originAngle); 
-		 		if (cost < deviation)
+		 		double cost = Utilities.nodesDistance(dualNode, originNode);  
+		 		if (cost < distance)
 		 		{
-		 			deviation = cost;
+		 			distance = cost;
 		 			best = dualNode;
 		 		}
 	 		}
 	 	}
-	 	dualNode = best;
-	 	return dualNode;
+	 	return best;
     }
     
-    public ArrayList<NodeGraph> getAdjacentNodes()
-    {	
-		DirectedEdgeStar startingEdges =  this.getOutEdges();
-		ArrayList<NodeGraph> adjacentNodes = new ArrayList<NodeGraph>();
-	 	for (Object o : startingEdges.getEdges())
-	 	{
-	 		GeomPlanarGraphDirectedEdge dEdge = (GeomPlanarGraphDirectedEdge) o;
-	 		EdgeGraph edge = (EdgeGraph) dEdge.getEdge();
-	 		NodeGraph otherNode = edge.getOtherNode(this);
-	 		adjacentNodes.add(otherNode);
-	 	}
-	 	return adjacentNodes;
-    }	
+
     
 }
 

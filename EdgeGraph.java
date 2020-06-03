@@ -31,11 +31,13 @@ public class EdgeGraph extends GeomPlanarGraphEdge
 	public int roadDistanceRegions, angularChangeRegions, roadDistanceBarriers, angularChangeBarriers, 
 		roadDistanceRegionsBarriers, angularChangeRegionsBarriers;
 
+
 	public NodeGraph u, v;
 	public NodeGraph dualNode;
 	
 	public List<Integer> positiveBarriers = new ArrayList<Integer>();
 	public List<Integer> negativeBarriers = new ArrayList<Integer>();
+	public List<Integer> barriers = new ArrayList<Integer>();
 	List<Integer> rivers = new ArrayList<Integer>();
 	List<Integer> parks = new ArrayList<Integer>();
 //	boolean pedestrian;
@@ -88,6 +90,13 @@ public class EdgeGraph extends GeomPlanarGraphEdge
     	return this.getLine().getCentroid().getCoordinate();
     }
     
+	public void resetDensities()
+	{
+		roadDistance = angularChange = roadDistanceLandmarks = angularChangeLandmarks = topological = 0;
+		localLandmarks = globalLandmarks = 0;
+		roadDistanceRegions = angularChangeRegions = roadDistanceBarriers = angularChangeBarriers =  
+			roadDistanceRegionsBarriers = angularChangeRegionsBarriers = 0;
+	}
     
     public void setBarriers()
     {
@@ -122,6 +131,10 @@ public class EdgeGraph extends GeomPlanarGraphEdge
 			String p = parksString.replaceAll("[^-?0-9]+", " ");
 			for(String t : (Arrays.asList(p.trim().split(" ")))) this.parks.add(Integer.valueOf(t));
 		}
+	   	
+	    if (positiveBarriers != null) this.barriers.addAll(positiveBarriers);
+	   	if (negativeBarriers != null) this.barriers.addAll(negativeBarriers);
+	   	if (negativeBarriers == null & positiveBarriers == null) this.barriers = null;
     }
     
     public Integer getIntegerAttribute(final String name)
@@ -133,6 +146,8 @@ public class EdgeGraph extends GeomPlanarGraphEdge
     {
         return this.attributes.get(name).getDouble();
     }
+    
+    
     
     public String getStringAttribute(final String name)
     {

@@ -11,8 +11,9 @@ import sim.util.geo.GeomPlanarGraphDirectedEdge;
 
 public class SubGraph extends Graph
 {
-	public SubGraphNodesMap subGraphNodesMap = new SubGraphNodesMap();
-	public SubGraphEdgesMap subGraphEdgesMap = new SubGraphEdgesMap();
+	private SubGraphNodesMap subGraphNodesMap = new SubGraphNodesMap();
+	private SubGraphEdgesMap subGraphEdgesMap = new SubGraphEdgesMap();
+	private ArrayList<Integer> graphBarriers = new ArrayList<Integer>();
 	Graph parentGraph;
 	
 	public SubGraph(Graph parentGraph, ArrayList <EdgeGraph> edges) 
@@ -45,8 +46,6 @@ public class SubGraph extends Graph
         GeomPlanarGraphDirectedEdge de0 = new GeomPlanarGraphDirectedEdge(newU, newV, coords[1], true);
         GeomPlanarGraphDirectedEdge de1 = new GeomPlanarGraphDirectedEdge(newV, newU, coords[coords.length - 2], false);
         newEdge.setDirectedEdges(de0, de1);
-        add(newEdge);
-        add(newEdge);
         newEdge.setAttributes(edge.attributes);
         newEdge.setNodes(newU, newV);
         subGraphNodesMap.add(newU, u);
@@ -54,6 +53,8 @@ public class SubGraph extends Graph
         subGraphEdgesMap.add(newEdge, edge);
         newU.primalEdge = u.primalEdge;
         newV.primalEdge = v.primalEdge;
+        add(newEdge);
+        this.edgesGraph.add(newEdge);
     }
     
     public class SubGraphNodesMap
@@ -65,23 +66,36 @@ public class SubGraph extends Graph
 	    }
 
 	    public NodeGraph findParent(NodeGraph nodeSubGraph) {return map.get(nodeSubGraph);}
-	    public NodeGraph findChild(NodeGraph nodeGraph) {return utilities.getKeyFromValue(map, nodeGraph);}
+	    public NodeGraph findChild(NodeGraph nodeGraph) {return Utilities.getKeyFromValue(map, nodeGraph);}
 	}
     
     public class SubGraphEdgesMap
     {
-    	private HashMap<EdgeGraph, EdgeGraph> SubGraphEdgesMap = new HashMap<EdgeGraph, EdgeGraph>();
+    	private HashMap<EdgeGraph, EdgeGraph> map = new HashMap<EdgeGraph, EdgeGraph>();
 	    public void add(EdgeGraph edge, EdgeGraph parentEdge)
 	    {
-	    	SubGraphEdgesMap.put(edge, parentEdge);
+	    	map.put(edge, parentEdge);
 	    }
 
-	    public EdgeGraph find(EdgeGraph edgeSubGraph) {return SubGraphEdgesMap.get(edgeSubGraph);}
+	    public EdgeGraph findParent(EdgeGraph edgeSubGraph) {return map.get(edgeSubGraph);}
+	    public EdgeGraph findChild(EdgeGraph edgeSubGraph) {return Utilities.getKeyFromValue(map, edgeSubGraph);}
 	}
     
     public NodeGraph getParentNode(NodeGraph nodeSubGraph)
     {
     	return subGraphNodesMap.findParent(nodeSubGraph);
+    }
+    
+    public ArrayList<NodeGraph> getParentNodes(ArrayList<NodeGraph> childNodes)
+    {
+    	
+    	ArrayList<NodeGraph> parentNodes = new  ArrayList<NodeGraph>();
+    	for (NodeGraph child: childNodes) 
+    		{
+    			NodeGraph parent = this.subGraphNodesMap.findParent(child);
+    			if (parent != null) parentNodes.add(parent);
+    		}
+    	return parentNodes;
     }
     
     public ArrayList<NodeGraph> getChildNodes(ArrayList<NodeGraph> parentNodes)
@@ -95,11 +109,40 @@ public class SubGraph extends Graph
     		}
     	return childNodes;
     }
+
     
     public EdgeGraph getParentEdge(EdgeGraph edgeSubGraph)
     {
-    	return subGraphEdgesMap.find(edgeSubGraph);
+    	return subGraphEdgesMap.findParent(edgeSubGraph);
     }
-
     
+    public ArrayList<EdgeGraph> getParentEdges(ArrayList<EdgeGraph> childEdges)
+    {
+    	ArrayList<EdgeGraph> parentEdges = new  ArrayList<EdgeGraph>();
+    	for (EdgeGraph child: childEdges) 
+    		{
+    			EdgeGraph parent = this.subGraphEdgesMap.findParent(child);
+    			if (parent != null) parentEdges.add(parent);
+    		}
+    	return parentEdges;
+    }
+    
+    public void setBarriersGraph()
+    {
+    	ArrayList<Integer> graphBarriers = new ArrayList<Integer>();
+    	for (EdgeGraph e : this.edgesGraph) 
+		{
+			 List<Integer> barriers = (ArrayList<Integer>) this.getParentEdge(e).barriers;
+			 if (barriers == null) continue;
+			 graphBarriers.addAll(barriers);
+		}
+    	Set<Integer> setBarriers = new HashSet<Integer>(graphBarriers);
+    	this.graphBarriers = new ArrayList<Integer>(setBarriers);
+    }
+    
+    
+    public ArrayList<Integer> getBarriersGraph()
+    {
+    	return this.graphBarriers;
+    }    
 }
