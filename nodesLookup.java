@@ -11,7 +11,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
-import sim.app.geo.pedestrianSimulation.PedestrianSimulation;
+import sim.app.geo.pedSimCity.PedSimCity;
 import sim.util.Bag;
 import sim.util.geo.MasonGeometry;
 
@@ -42,7 +42,7 @@ public class NodesLookup {
     	while (n == null)
     	{
     		if (expanding_radius >= radius * 2.00) return null;
-    		filterSpatial = PedestrianSimulation.junctions.getObjectsWithinDistance(nodeGeometry, expanding_radius);
+    		filterSpatial = PedSimCity.junctions.getObjectsWithinDistance(nodeGeometry, expanding_radius);
     		if (filterSpatial.size() < 1) 
     		{
     			expanding_radius = expanding_radius *1.10;	
@@ -61,7 +61,7 @@ public class NodesLookup {
     			continue;
 			}
      	  	
-    		filterByDistrict = junctionsWithin.filter("district", originNode.district, "different");
+    		filterByDistrict = junctionsWithin.filter("region", originNode.region, "different");
     		if (filterByDistrict.size() == 0)
 			{
     			expanding_radius = expanding_radius *1.10;	
@@ -90,7 +90,8 @@ public class NodesLookup {
 			double lowL = distance - distance*tolerance;
 	 	    double uppL = distance + distance*tolerance;
 	 	    
-			ArrayList<NodeGraph> possibleDestinations = PedestrianSimulation.network.salientNodes(originNode, null, lowL, uppL, 0.75, "global");
+			ArrayList<NodeGraph> possibleDestinations = PedSimCity.network.salientNodesBewteenSpace(originNode, null, lowL, uppL, 0.75,
+					"global");
 			
 			if (possibleDestinations == null)
 			{
@@ -99,7 +100,7 @@ public class NodesLookup {
 			}
 			
 			possibleDestinations = (ArrayList<NodeGraph>) possibleDestinations.stream().
-					filter(node -> node.district != originNode.district).collect(Collectors.toList());
+					filter(node -> node.region != originNode.region).collect(Collectors.toList());
 			if ((possibleDestinations == null) || (possibleDestinations.size() == 0))
 			{
 				tolerance += 0.10;
@@ -120,15 +121,15 @@ public class NodesLookup {
     	Float distance = distances.get(pD);
     	NodeGraph node = null;
     	ArrayList <NodeGraph> candidates = null;
-    	double tolerance = 0.10;
+    	double tolerance = 50;
     	
     	while(true)
     	{
-	 	  	double lowL = distance - distance*tolerance;
-	 	    double uppL = distance + distance*tolerance;
+	 	  	double lowL = distance - tolerance;
+	 	    double uppL = distance + tolerance;
 	 	    candidates = network.getWithinNodes(originNode, lowL, uppL);	 
 	 	  	if (candidates.size() > 1) break;
-	 	  	else tolerance += 0.10;
+	 	  	else tolerance += 50;
     	}
     	
     	while (node == null || (node.getID() == originNode.getID()))
@@ -140,7 +141,7 @@ public class NodesLookup {
  	  	return node;
     }
     
-    static NodeGraph nodeWithinDistance(NodeGraph originNode, double lowL, double uppL, Graph network)
+    public static NodeGraph nodeWithinDistance(NodeGraph originNode, double lowL, double uppL, Graph network)
     {	    
     	Random random = new Random();
     	ArrayList <NodeGraph> candidates = network.getWithinNodes(originNode, lowL, uppL);	
@@ -152,7 +153,7 @@ public class NodesLookup {
     public static NodeGraph nodeWithinDistanceOtherDistricts(NodeGraph originNode, double lowL, double uppL, Graph network)
     {	    
     	Random random = new Random();
-    	ArrayList <NodeGraph> candidates = network.getWithinNodesOtherDistricts(originNode, lowL, uppL);	
+    	ArrayList <NodeGraph> candidates = network.getWithinNodesOtherRegions(originNode, lowL, uppL);	
  	  	int c = random.nextInt(candidates.size());
  	  	NodeGraph node = candidates.get(c);
  	  	return node;

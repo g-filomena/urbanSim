@@ -1,9 +1,11 @@
 package sim.app.geo.urbanSim;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateArrays;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
 import sim.util.geo.GeomPlanarGraphDirectedEdge;
 
@@ -14,6 +16,7 @@ public class SubGraph extends Graph
 	private SubGraphNodesMap subGraphNodesMap = new SubGraphNodesMap();
 	private SubGraphEdgesMap subGraphEdgesMap = new SubGraphEdgesMap();
 	private ArrayList<Integer> graphBarriers = new ArrayList<Integer>();
+	LinkedHashMap<NodeGraph, Double> centralityMap = new LinkedHashMap<NodeGraph, Double>(); 
 	Graph parentGraph;
 	
 	public SubGraph(Graph parentGraph, ArrayList <EdgeGraph> edges) 
@@ -91,23 +94,45 @@ public class SubGraph extends Graph
     	
     	ArrayList<NodeGraph> parentNodes = new  ArrayList<NodeGraph>();
     	for (NodeGraph child: childNodes) 
-    		{
-    			NodeGraph parent = this.subGraphNodesMap.findParent(child);
-    			if (parent != null) parentNodes.add(parent);
-    		}
+		{
+			NodeGraph parent = this.subGraphNodesMap.findParent(child);
+			if (parent != null) parentNodes.add(parent);
+		}
+    	return parentNodes;
+    }
+    
+    public ArrayList<NodeGraph> getParentNodes()
+    {
+    	
+    	ArrayList<NodeGraph> parentNodes = new  ArrayList<NodeGraph>();
+    	for (NodeGraph child: this.getNodesList()) 
+		{
+			NodeGraph parent = this.subGraphNodesMap.findParent(child);
+			if (parent != null) parentNodes.add(parent);
+		}
     	return parentNodes;
     }
     
     public ArrayList<NodeGraph> getChildNodes(ArrayList<NodeGraph> parentNodes)
     {
-    	
     	ArrayList<NodeGraph> childNodes = new  ArrayList<NodeGraph>();
     	for (NodeGraph parent: parentNodes) 
-    		{
-    			NodeGraph child = this.subGraphNodesMap.findChild(parent);
-    			if (child != null) childNodes.add(child);
-    		}
+		{
+			NodeGraph child = this.subGraphNodesMap.findChild(parent);
+			if (child != null) childNodes.add(child);
+		}
     	return childNodes;
+    }
+    
+    public ArrayList<EdgeGraph> getChildEdges(ArrayList<EdgeGraph> parentEdges)
+    {
+    	ArrayList<EdgeGraph> childEdges = new  ArrayList<EdgeGraph>();
+    	for (EdgeGraph parent: parentEdges) 
+    		{
+    			EdgeGraph child = this.subGraphEdgesMap.findChild(parent);
+    			if (child != null) childEdges.add(child);
+    		}
+    	return childEdges;
     }
 
     
@@ -140,9 +165,83 @@ public class SubGraph extends Graph
     	this.graphBarriers = new ArrayList<Integer>(setBarriers);
     }
     
+    public void setLandmarksGraph()
+    {
+    	
+    	for (NodeGraph node : this.getNodesList())
+    	{
+    		NodeGraph parentNode = this.getParentNode(node);
+			node.visible2d = parentNode.visible2d;
+			node.localLandmarks = parentNode.localLandmarks;
+			node.localScores = parentNode.localScores;
+			node.distantLandmarks = parentNode.distantLandmarks;
+			node.distantScores = parentNode.distantScores;
+			node.anchors = parentNode.anchors;
+			node.distances = parentNode.distances;
+    	}
+    	
+    }
+    	
+  
+    
     
     public ArrayList<Integer> getBarriersGraph()
     {
     	return this.graphBarriers;
-    }    
+    }   
+        
+    public void generateSubGraphCentralityMap()
+    {
+    	LinkedHashMap<NodeGraph, Double> centralityMap = new LinkedHashMap<NodeGraph, Double>(); 
+    	Collection<NodeGraph> nodes = this.subGraphNodesMap.map.values();
+    	for (NodeGraph n: nodes)
+		{
+			NodeGraph parentNode = this.getParentNode(n);
+			centralityMap.put(n, parentNode.centrality);
+		}
+    	this.centralityMap = (LinkedHashMap<NodeGraph, Double>) Utilities.sortByValue(centralityMap, "ascending");
+    }
+       
+    
+    public ArrayList<NodeGraph> salientNodesInSubGraph(double percentile)
+    {
+    	
+    	ArrayList<NodeGraph> salientParentNodes = this.parentGraph.salientNodesNetwork(percentile);
+    	salientParentNodes.retainAll(this.getParentNodes());
+    	return salientParentNodes;
+    }
+    
+   
+    public ArrayList<NodeGraph> localSalientNodes(double percentile)
+	{
+
+	    int position;
+	    double min_value = 0.0;
+	    
+    	position = (int) (this.centralityMap.size()*percentile);
+    	min_value = (new ArrayList<Double>(this.centralityMap.values())).get(position);
+    	
+	    double boundary = min_value;
+	    Map<NodeGraph, Double> valueFilteredMap = this.centralityMap.entrySet().stream()
+	    	      .filter(entry -> entry.getValue() >= boundary)
+	    	      .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
+	    
+	    if ((valueFilteredMap.size() == 0) || (valueFilteredMap == null)) return null;
+	    ArrayList<NodeGraph> result = new ArrayList<>(valueFilteredMap.keySet());
+	    return result;	
+	}
+    
+    public ArrayList<NodeGraph> getNodesList()
+    {
+    	ArrayList<NodeGraph> nodesList = new ArrayList<NodeGraph>();
+    	nodesList.addAll(this.subGraphNodesMap.map.values());
+    	return nodesList;
+    }
+       
+    
+    
+    
+    
+    
+    
 }

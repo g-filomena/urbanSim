@@ -229,7 +229,7 @@ public class Utilities {
 	
 	public static Coordinate angleViewField(NodeGraph originNode, NodeGraph destinationNode, double desired)
 	{
-		double angle = Angle.angle(originNode, destinationNode);
+		double angle = Angles.angle(originNode, destinationNode);
 		if (angle > 360) angle = 360-angle;
 		Coordinate coord = getCoordAngle(originNode, nodesDistance(originNode, destinationNode), angle+desired);
 		return coord;
