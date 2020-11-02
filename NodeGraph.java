@@ -1,7 +1,6 @@
 package sim.app.geo.urbanSim;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -32,15 +31,13 @@ public class NodeGraph extends Node
 	public EdgeGraph primalEdge;
 	public double centrality, centrality_sc;
 
-	public List<Integer> visible2d = new ArrayList<Integer>();
-	public List<Integer> localLandmarks = new ArrayList<Integer>();
-	public List<Double> localScores = new ArrayList<Double>();
-	public List<Integer> distantLandmarks  = new ArrayList<Integer>();
-	public List<Double> distantScores = new ArrayList<Double>();
-	public List<Integer> anchors = new ArrayList<Integer>();
+	public ArrayList<Building> visible2d = new ArrayList<Building>();
+	public ArrayList<Building> localLandmarks = new ArrayList<Building>();
+	public ArrayList<Building> distantLandmarks  = new ArrayList<Building>();
+	public ArrayList<Building> anchors = new ArrayList<Building>();
 	public List<Double> distances = new ArrayList<Double>();
 
-	public ArrayList<Integer> adjacentRegions = new ArrayList<Integer>();
+	public List<Integer> adjacentRegions = new ArrayList<Integer>();
 	public ArrayList<NodeGraph> adjacentEntries = new ArrayList<NodeGraph>();
 	public ArrayList<NodeGraph> adjacentNodes = new ArrayList<NodeGraph>();
 	public ArrayList<EdgeGraph> edges = new ArrayList<EdgeGraph>();
@@ -77,46 +74,6 @@ public class NodeGraph extends Node
 	 * @param geometry the MasonGeometry of this node.
 	 */
 
-	public void setLandmarkness(MasonGeometry geometry) {
-
-		String localString = geometry.getStringAttribute("loc_land");
-		String lScoresString = geometry.getStringAttribute("loc_scor");
-		String distantString = geometry.getStringAttribute("dist_land");
-		String dScoresString = geometry.getStringAttribute("dist_scor");
-		String anchorsString = geometry.getStringAttribute("anchors");
-		String distancesString = geometry.getStringAttribute("distances");
-
-		if (!localString.equals("[]")) {
-			String l = localString.replaceAll("[^-?0-9]+", " ");
-			String s = lScoresString.replaceAll("[^0-9.]+", " ");
-			for(String t : (Arrays.asList(l.trim().split(" ")))) this.localLandmarks.add(Integer.valueOf(t));
-			for(String t : (Arrays.asList(s.trim().split(" ")))) this.localScores.add(Double.valueOf(t));
-		}
-		else {
-			this.localLandmarks = null;
-			this.localScores = null;
-		}
-
-		if (!distantString.equals("[]")) {
-			String l = distantString.replaceAll("[^-?0-9]+", " ");
-			String s = dScoresString.replaceAll("[^0-9.]+", " ");
-			for(String t : (Arrays.asList(l.trim().split(" ")))) this.distantLandmarks.add(Integer.valueOf(t));
-			for(String t : (Arrays.asList(s.trim().split(" ")))) this.distantScores.add(Double.valueOf(t));
-		}
-		else {
-			this.distantLandmarks = null;
-			this.distantScores = null;
-		}
-
-		if (!anchorsString.equals("[]")) {
-			String l = anchorsString.replaceAll("[^-?0-9]+", " ");
-			String d = distancesString.replaceAll("[^0-9.]+", " ");
-			for(String t : (Arrays.asList(l.trim().split(" ")))) this.anchors.add(Integer.valueOf(t));
-			for(String t : (Arrays.asList(d.trim().split(" ")))) this.distances.add(Double.valueOf(t));
-		}
-		else this.anchors = null;
-	}
-
 
 	public EdgeGraph getEdgeBetween(NodeGraph v) {
 		EdgeGraph edge = null;
@@ -133,7 +90,7 @@ public class NodeGraph extends Node
 		return this.outEdges;
 	}
 
-	public void setNeighboouringComponents() {
+	public void setNeighbouringComponents() {
 		this.edges = getEdgesNode();
 		this.adjacentNodes = getAdjacentNodes();
 		List<DirectedEdge> outEdges  = this.getOutEdges().getEdges();
