@@ -2,6 +2,11 @@ package sim.app.geo.urbanSim;
 
 import sim.util.geo.MasonGeometry;
 
+/**
+ * A class to store buildings' metainformation
+ *
+ */
+
 public class Building {
 
 	public int buildingID;

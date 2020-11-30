@@ -14,7 +14,6 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.planargraph.DirectedEdge;
 
-import sim.field.geo.GeomVectorField;
 import sim.field.network.Network;
 import sim.util.Bag;
 import sim.util.geo.GeomPlanarGraph;
@@ -23,11 +22,9 @@ import sim.util.geo.MasonGeometry;
 
 
 
-/** A JTS PlanarGraph
- *
- * Planar graph useful for exploiting network topology.
- *
- * @see sim.app.geo.networkworld and sim.app.geo.campusworld
+/**
+ * A planar graph that extends the GeomPlanarGraph (GeoMason) and PlanarGraph (JTS) classes.
+ * Its basic components are NodeGraph and EdgeGraph.
  *
  */
 public class Graph extends GeomPlanarGraph
@@ -35,31 +32,47 @@ public class Graph extends GeomPlanarGraph
 	public ArrayList<EdgeGraph> edgesGraph = new ArrayList<EdgeGraph>();
 	LinkedHashMap<NodeGraph, Double> centralityMap = new LinkedHashMap<NodeGraph, Double>();
 	public HashMap<Integer, NodeGraph> nodesMap = new HashMap<Integer, NodeGraph>();
+	VectorLayer junctions = new VectorLayer();
 
 	public Graph()
 	{
 		super();
 	}
 
-	/** populate network with lines from a GeomVectorField
+	/**
+	 * It populate network with lines from a GeomVectorField (GeoMason) or VectorLayer
 	 *
-	 * @param field containing line segments
-	 *
-	 * Assumes that 'field' contains co-planar linear objects
-	 *
+	 * @param streetSegments the street segments layer;
 	 */
-	public void fromGeomField(GeomVectorField field)
-	{
-		Bag geometries = field.getGeometries();
-
-		for (Object o : geometries)
-		{
+	public void fromGeomField(VectorLayer streetSegments) {
+		Bag geometries = streetSegments.getGeometries();
+		for (Object o : geometries) {
 			if (((MasonGeometry) o).geometry instanceof LineString) this.addLineString((MasonGeometry) o);
 		}
 	}
 
-	private void addLineString(MasonGeometry wrappedLine)
-	{
+	/**
+	 * It populate network with lines from a GeomVectorField (GeoMason) or VectorLayer.
+	 * It also stores the geometries of the junctions, for convenience.
+	 *
+	 * @param streetJunctins the street junctions layer;
+	 * @param streetSegments the street segments layer;
+	 */
+	public void fromGeomField(VectorLayer streetJunctions, VectorLayer streetSegments) {
+		Bag geometries = streetSegments.getGeometries();
+		for (Object o : geometries) {
+			if (((MasonGeometry) o).geometry instanceof LineString) this.addLineString((MasonGeometry) o);
+		}
+		this.junctions = streetJunctions;
+	}
+
+	/**
+	 * It adds an Edge Graph and its nodes to the graph.
+	 * It also stores the geometries of the junctions, for convenience.
+	 *
+	 * @param wrappedLine the MasonGeometry corresponding to a street segment;
+	 */
+	private void addLineString(MasonGeometry wrappedLine) {
 		LineString line = (LineString) wrappedLine.geometry;
 		if (line.isEmpty()) return;
 
@@ -87,15 +100,11 @@ public class Graph extends GeomPlanarGraph
 	}
 
 
-
-	/** get the node corresponding to the coordinate
+	/**
+	 * It returns the NodeGraph corresponding to the given coordinate
 	 *
-	 * @param startPt
-	 * @return graph node associated with point
-	 *
-	 * Will create a new Node if one does not exist.
-	 *
-	 * @note Some code copied from JTS PolygonizeGraph.getNode() and hacked to fit
+	 * @param pt the coordinates;
+	 * @note Override as the original methods returns a Node.
 	 */
 	@Override
 	public NodeGraph getNode(Coordinate pt) {
@@ -109,6 +118,10 @@ public class Graph extends GeomPlanarGraph
 		return node;
 	}
 
+	/**
+	 * It returns this graph's network;
+	 *
+	 */
 	@Override
 	public Network getNetwork() {
 
@@ -121,11 +134,21 @@ public class Graph extends GeomPlanarGraph
 		return network;
 	}
 
+	/**
+	 * It returns the NodeGraph corresponding to the coordinate
+	 *
+	 * @param pt the coordinates;
+	 * @note Override as the original methods returns a Node.
+	 */
 	@Override
 	public NodeGraph findNode(Coordinate pt) {
 		return (NodeGraph) nodeMap.find(pt);
 	}
 
+	/**
+	 * It generates the nodes map of this graph.
+	 *
+	 */
 	private void generateNodesMap() {
 		Collection<NodeGraph> nodes = this.getNodes();
 		for (NodeGraph node : nodes) {
@@ -133,15 +156,18 @@ public class Graph extends GeomPlanarGraph
 		}
 	}
 
+	/**
+	 * It generates the nodes' centrality map of this graph.
+	 *
+	 */
 	public void generateCentralityMap() {
 
 		this.generateNodesMap();
-
 		LinkedHashMap<NodeGraph, Double> centralityMap = new LinkedHashMap<NodeGraph, Double>();
 		Collection<NodeGraph> nodes = nodesMap.values();
 
 		for (NodeGraph node : nodes) centralityMap.put(node, node.centrality);
-		this.centralityMap = (LinkedHashMap<NodeGraph, Double>) Utilities.sortByValue(centralityMap, "ascending");
+		this.centralityMap = (LinkedHashMap<NodeGraph, Double>) Utilities.sortByValue(centralityMap, false);
 
 		// rescale
 		for (NodeGraph node : nodes) {
@@ -152,78 +178,81 @@ public class Graph extends GeomPlanarGraph
 	}
 
 
-	public ArrayList<NodeGraph> salientNodesWithinSpace(NodeGraph originNode, NodeGraph destinationNode, double lowL, double uppL,
-			double percentile, String typeLandmarkness) {
+	/**
+	 * It returns a Map of salient nodes, on the basis of centrality values.
+	 * The returned Map is in the format <NodeGraph, Double>, where the values represent centrality values.
+	 * The percentile determines the threshold used to identify salient nodes. For example, if 0.75 is provided,
+	 * only the nodes whose centrality value is higher than the value at the 75th percentile are returned.
+	 * This is computed within the space (smallest enclosing circle) between two given nodes;
+	 * The keys represent NodeGraph in the SubGraph (child nodes).
+	 *
+	 * @param node a node;
+	 * @param otherNode an other node;
+	 * @param percentile the percentile use to identify salient nodes;
+	 */
+	public Map<NodeGraph, Double> salientNodesWithinSpace(NodeGraph node, NodeGraph otherNode, double percentile) {
 
-		Geometry smallestEnclosingCircle;
 		ArrayList<NodeGraph> containedNodes = new ArrayList<NodeGraph>();
+		Geometry smallestEnclosingCircle = NodeGraph.nodesEnclosingCircle(node, otherNode);
+		containedNodes = this.getContainedNodes(smallestEnclosingCircle);
 
-		if (destinationNode != null && lowL == 0) {
-			smallestEnclosingCircle = Utilities.smallestEnclosingCircle(originNode, destinationNode);
-			containedNodes = this.getContainedNodes(smallestEnclosingCircle);
-		}
-		else if (destinationNode == null && lowL == 0) {
-			smallestEnclosingCircle = originNode.masonGeometry.geometry.buffer(uppL);
-			containedNodes = this.getContainedNodes(smallestEnclosingCircle);
-		}
-		else if (lowL != 0) containedNodes = this.getNodesBetweenLimits(originNode, lowL, uppL);
+		if (containedNodes.size() == 0 ) return null;
+		LinkedHashMap<NodeGraph, Double> spatialfilteredMap = new LinkedHashMap<NodeGraph, Double>();
+		spatialfilteredMap = filterCentralityMap(centralityMap, containedNodes);
+		if (spatialfilteredMap.size() == 0) return null;
 
-		if (containedNodes.size() == 0 || containedNodes == null) return null;
-		LinkedHashMap<NodeGraph, Double> SpatialfilteredMap = filterCentralityMap(centralityMap, containedNodes);
-		if (SpatialfilteredMap.size() == 0 || SpatialfilteredMap == null) return null;
-
-		int position;
-		double min_value = 0.0;
-
-		// global quantile
-		if (typeLandmarkness == "global") {
-			position = (int) (centralityMap.size()*percentile);
-			min_value = (new ArrayList<Double>(centralityMap.values())).get(position);
-		}
-		else {
-			position = (int) (SpatialfilteredMap.size()*percentile);
-			min_value = (new ArrayList<Double>(SpatialfilteredMap.values())).get(position);
-		}
-
-		double boundary = min_value;
-		Map<NodeGraph, Double> valueFilteredMap = SpatialfilteredMap.entrySet().stream()
+		int position = (int) (spatialfilteredMap.size()*percentile);
+		double boundary = (new ArrayList<Double>(spatialfilteredMap.values())).get(position);
+		Map<NodeGraph, Double> valueFilteredMap = spatialfilteredMap.entrySet().stream()
 				.filter(entry -> entry.getValue() >= boundary)
 				.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
 
-		if ((valueFilteredMap.size() == 0) || (valueFilteredMap == null)) return null;
-		ArrayList<NodeGraph> result = new ArrayList<>(valueFilteredMap.keySet());
-		return result;
+		if (valueFilteredMap.size() == 0 || valueFilteredMap == null) return null;
+		else return valueFilteredMap;
 	}
 
-	public ArrayList<NodeGraph> salientNodesNetwork(double percentile) {
+
+	/**
+	 * It returns a Map of salient nodes, on the basis of centrality values.
+	 * The returned Map is in the format <NodeGraph, Double>, where the values represent centrality values.
+	 * The percentile determines the threshold used to identify salient nodes. For example, if 0.75 is provided,
+	 * only the nodes whose centrality value is higher than the value at the 75th percentile are returned.
+	 * This is computed within the entire graph..
+	 *
+	 * @param percentile the percentile use to identify salient nodes;
+	 */
+	public Map<NodeGraph, Double> salientNodesNetwork(double percentile) {
 		int position;
-		double min_value = 0.0;
-
 		position = (int) (centralityMap.size()*percentile);
-		min_value = (new ArrayList<Double>(centralityMap.values())).get(position);
-
-		double boundary = min_value;
+		double boundary = (new ArrayList<Double>(centralityMap.values())).get(position);
 		Map<NodeGraph, Double> valueFilteredMap = centralityMap.entrySet().stream()
 				.filter(entry -> entry.getValue() >= boundary)
 				.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
-
-		if ((valueFilteredMap.size() == 0) || (valueFilteredMap == null)) return null;
-		ArrayList<NodeGraph> result = new ArrayList<>(valueFilteredMap.keySet());
-		return result;
+		if (valueFilteredMap.size() == 0 || valueFilteredMap == null) return null;
+		else return valueFilteredMap;
 	}
 
-
+	/**
+	 * It returns a list of nodes contained within a given geometry.
+	 *
+	 * @param g the given geometry;
+	 */
 	public ArrayList<NodeGraph> getContainedNodes(Geometry g) {
 		ArrayList<NodeGraph> containedNodes = new ArrayList<NodeGraph>();
 		Collection<NodeGraph> nodes = nodesMap.values();
 
 		for (NodeGraph node : nodes ) {
-			Geometry geoNode = node.masonGeometry.getGeometry();
+			Geometry geoNode = node.masonGeometry.geometry;
 			if (g.contains(geoNode)) containedNodes.add(node);
 		}
 		return containedNodes;
 	}
 
+	/**
+	 * It returns a list of edges contained within a given geometry.
+	 *
+	 * @param g the given geometry;
+	 */
 	public ArrayList<EdgeGraph> getContainedEdges(Geometry g)
 	{
 		ArrayList<EdgeGraph> containedEdges = new ArrayList<EdgeGraph>();
@@ -236,6 +265,11 @@ public class Graph extends GeomPlanarGraph
 		return containedEdges;
 	}
 
+	/**
+	 * It returns the list of edges contained in the graph.
+	 *
+	 * @param g the given geometry;
+	 */
 	@Override
 	public ArrayList<EdgeGraph> getEdges() {
 		return this.edgesGraph;
@@ -252,7 +286,8 @@ public class Graph extends GeomPlanarGraph
 
 
 	public ArrayList<EdgeGraph> edgesWithinSpace(NodeGraph originNode, NodeGraph destinationNode) {
-		Double radius = Utilities.nodesDistance(originNode,  destinationNode)*1.50;
+
+		Double radius = NodeGraph.nodesDistance(originNode,  destinationNode)*1.50;
 		if (radius < 500) radius = 500.0;
 		Geometry bufferOrigin = originNode.masonGeometry.geometry.buffer(radius);
 		Geometry bufferDestination = destinationNode.masonGeometry.geometry.buffer(radius);
@@ -262,19 +297,19 @@ public class Graph extends GeomPlanarGraph
 		return containedEdges;
 	}
 
-	public ArrayList<NodeGraph> getNodesBetweenLimits(NodeGraph originNode, double lowL, double uppL) {
+	public ArrayList<NodeGraph> getNodesBetweenLimits(NodeGraph originNode, double lowerLimit, double upperLimit) {
 
-		Geometry bufferS = originNode.masonGeometry.geometry.buffer(lowL);
-		Geometry bufferB = originNode.masonGeometry.geometry.buffer(uppL);
-		Geometry space = bufferB.difference(bufferS);
-		return this.getContainedNodes(space);
+		ArrayList<NodeGraph> containedNodes = new ArrayList<NodeGraph>();
+		MasonGeometry originGeometry = originNode.masonGeometry;
+		Bag containedGeometries = this.junctions.featuresBetweenLimits(originGeometry.geometry, lowerLimit, upperLimit);
+		for (Object o : containedGeometries) containedNodes.add(this.findNode(((MasonGeometry) o).geometry.getCoordinate()));
+		return containedNodes;
 	}
 
-	public ArrayList<NodeGraph> getNodesBetweenLimitsOtherRegion(NodeGraph originNode, double lowL, double uppL) {
-		Geometry bufferL = originNode.masonGeometry.geometry.buffer(lowL);
-		Geometry bufferU = originNode.masonGeometry.geometry.buffer(uppL);
-		Geometry space = bufferU.difference(bufferL);
-		return this.filterOutRegion(this.getContainedNodes(space), originNode.region);
+	public ArrayList<NodeGraph> getNodesBetweenLimitsOtherRegion(NodeGraph originNode, double lowerLimit, double upperLimit) {
+		ArrayList<NodeGraph> containedNodes = new ArrayList<NodeGraph>();
+		containedNodes = getNodesBetweenLimits(originNode, lowerLimit, upperLimit);
+		return this.filterOutRegion(containedNodes, originNode.region);
 	}
 
 
@@ -286,75 +321,42 @@ public class Graph extends GeomPlanarGraph
 	}
 
 	public void setLocalLandmarkness(VectorLayer localLandmarks, HashMap<Integer, Building> buildingsMap,
-			double radius, String[][] visibilityMatrix) {
-
-		Collection<NodeGraph> nodes = nodesMap.values();
-
-		for (NodeGraph node : nodes) {
-
-			Bag containedLandmarks = localLandmarks.featuresWithinDistance(node.masonGeometry.geometry, radius);
-			if (containedLandmarks.size() == 0) {
-				node.localLandmarks = null;
-			}
-			else {
-				for (Object l : containedLandmarks ) {
-					MasonGeometry building = (MasonGeometry) l;
-					node.localLandmarks.add(buildingsMap.get((int) building.getUserData()));
-				}
-			}
-		}
-
-		// landmarks visible from the junction
-		if (visibilityMatrix != null) {
-			for (int column = 1; column < visibilityMatrix[0].length; column++) {
-				for (int row = 1; row < visibilityMatrix.length; row++) {
-					int visibility = Integer.valueOf(visibilityMatrix[row][column]);
-
-					if (visibility == 1) {
-						int buildingID = Integer.valueOf(visibilityMatrix[row][0]);
-						nodesMap.get(row).visible2d.add(buildingsMap.get(buildingID));
-					}
-				}
-			}
-		}
-		else {
-			for (NodeGraph node : nodes) node.visible2d = null;
-		}
-	}
-
-	public void setGlobalLandmarkness(VectorLayer globalLandmarks, HashMap<Integer, Building> buildingsMap,
-			double radius, VectorLayer sightLines) {
+			double radius) {
 
 		Collection<NodeGraph> nodes = nodesMap.values();
 
 		nodes.forEach((node) -> {
-			Bag sightLinesFromNode = new Bag();
-			MasonGeometry nodeGeometry = node.masonGeometry;
-			Bag containedLandmarks = globalLandmarks.featuresWithinDistance(node.masonGeometry.geometry, radius);
 
-			if (containedLandmarks.size() == 0) {
-				node.anchors = null;
-				node.distances = null;
-			}
-			else {
-				for (Object l : containedLandmarks ) {
-					MasonGeometry building = (MasonGeometry) l;
-					int buildingID = (int) building.getUserData();
-					node.anchors.add(buildingsMap.get(buildingID));
-					node.distances.add(building.geometry.distance(nodeGeometry.geometry));
-				}
-			}
-
-			sightLinesFromNode = sightLines.filterFeatures("nodeID", node.getID(), true);
-			if (sightLinesFromNode.size() == 0) node.distantLandmarks = null;
-			else {
-				for (Object sL : sightLinesFromNode) {
-					MasonGeometry sightLine = (MasonGeometry) sL;
-					int buildingID = sightLine.getIntegerAttribute("buildingID");
-					node.distantLandmarks.add(buildingsMap.get(buildingID));
-				}
+			Bag containedLandmarks = localLandmarks.featuresWithinDistance(node.masonGeometry.geometry, radius);
+			for (Object l : containedLandmarks ) {
+				MasonGeometry building = (MasonGeometry) l;
+				node.localLandmarks.add(buildingsMap.get((int) building.getUserData()));
 			}
 		});
+	}
+
+	public void setGlobalLandmarkness(VectorLayer globalLandmarks, HashMap<Integer, Building> buildingsMap,
+			double radiusAnchors, VectorLayer sightLines) {
+
+		Collection<NodeGraph> nodes = nodesMap.values();
+		nodes.forEach((node) -> {
+
+			MasonGeometry nodeGeometry = node.masonGeometry;
+			Bag containedLandmarks = globalLandmarks.featuresWithinDistance(node.masonGeometry.geometry, radiusAnchors);
+			for (Object l : containedLandmarks ) {
+				MasonGeometry building = (MasonGeometry) l;
+				int buildingID = (int) building.getUserData();
+				node.anchors.add(buildingsMap.get(buildingID));
+				node.distances.add(building.geometry.distance(nodeGeometry.geometry));
+			}
+		});
+		ArrayList<MasonGeometry> sightLinesGeometries = sightLines.geometriesList;
+
+		for (MasonGeometry sl : sightLinesGeometries) {
+			Building building = buildingsMap.get(sl.getIntegerAttribute("buildingID"));
+			NodeGraph node = nodesMap.get(sl.getIntegerAttribute("nodeID"));
+			node.distantLandmarks.add(building);
+		}
 	}
 }
 
