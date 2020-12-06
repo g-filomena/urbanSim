@@ -1,4 +1,4 @@
-package sim.app.geo.urbanSim;
+package sim.app.geo.UrbanSim;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,10 +23,8 @@ public class EdgeGraph extends GeomPlanarGraphEdge {
 	public double deflectionDegrees;
 	public MasonGeometry masonGeometry;
 
-	public int roadDistance, angularChange, roadDistanceLandmarks, angularChangeLandmarks, topological;
-	public int localLandmarks, globalLandmarks;
-	public int roadDistanceRegions, angularChangeRegions, roadDistanceBarriers, angularChangeBarriers,
-	roadDistanceRegionsBarriers, angularChangeRegionsBarriers;
+	public int RD, AC, RL, AL;
+	public int LL, GL;
 
 	public NodeGraph u, v;
 	public NodeGraph dualNode;
@@ -121,10 +119,8 @@ public class EdgeGraph extends GeomPlanarGraphEdge {
 	 */
 	public void resetDensities() {
 
-		roadDistance = angularChange = roadDistanceLandmarks = angularChangeLandmarks = topological = 0;
-		localLandmarks = globalLandmarks = 0;
-		roadDistanceRegions = angularChangeRegions = roadDistanceBarriers = angularChangeBarriers =
-				roadDistanceRegionsBarriers = angularChangeRegionsBarriers = 0;
+		RD = AC = RL = AL = 0;
+		LL = GL = 0;
 	}
 
 

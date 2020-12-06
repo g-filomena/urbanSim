@@ -1,10 +1,11 @@
-package sim.app.geo.urbanSim;
+package sim.app.geo.UrbanSim;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -199,7 +200,7 @@ public class Graph extends GeomPlanarGraph
 		if (containedNodes.size() == 0 ) return null;
 		LinkedHashMap<NodeGraph, Double> spatialfilteredMap = new LinkedHashMap<NodeGraph, Double>();
 		spatialfilteredMap = filterCentralityMap(centralityMap, containedNodes);
-		if (spatialfilteredMap.size() == 0) return null;
+		if (spatialfilteredMap.size() == 0 || spatialfilteredMap == null ) return null;
 
 		int position = (int) (spatialfilteredMap.size()*percentile);
 		double boundary = (new ArrayList<Double>(spatialfilteredMap.values())).get(position);
@@ -336,15 +337,28 @@ public class Graph extends GeomPlanarGraph
 	}
 
 	public void setGlobalLandmarkness(VectorLayer globalLandmarks, HashMap<Integer, Building> buildingsMap,
-			double radiusAnchors, VectorLayer sightLines) {
+			double radiusAnchors, VectorLayer sightLines, int nrAnchors) {
 
 		Collection<NodeGraph> nodes = nodesMap.values();
-		nodes.forEach((node) -> {
 
+		nodes.forEach((node) -> {
 			MasonGeometry nodeGeometry = node.masonGeometry;
 			Bag containedLandmarks = globalLandmarks.featuresWithinDistance(node.masonGeometry.geometry, radiusAnchors);
+			List<Double> gScores = new ArrayList<Double>();
+
+			if (nrAnchors != 999999) {
+				for (Object l : containedLandmarks ) {
+					MasonGeometry building = (MasonGeometry) l;
+					gScores.add(building.getDoubleAttribute("gScore_sc"));
+
+				}
+				Collections.sort(gScores);
+				Collections.reverse(gScores);
+			}
+
 			for (Object l : containedLandmarks ) {
 				MasonGeometry building = (MasonGeometry) l;
+				if (nrAnchors != 999999 & building.getDoubleAttribute("gScore_sc") < gScores.get(nrAnchors-1)) continue;
 				int buildingID = (int) building.getUserData();
 				node.anchors.add(buildingsMap.get(buildingID));
 				node.distances.add(building.geometry.distance(nodeGeometry.geometry));
@@ -359,6 +373,7 @@ public class Graph extends GeomPlanarGraph
 		}
 	}
 }
+
 
 
 

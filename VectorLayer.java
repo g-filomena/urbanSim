@@ -1,4 +1,4 @@
-package sim.app.geo.urbanSim;
+package sim.app.geo.UrbanSim;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +26,7 @@ public class VectorLayer extends GeomVectorField {
 
 	public VectorLayer() {
 		super();
+
 	}
 
 	/**
@@ -297,6 +298,7 @@ public class VectorLayer extends GeomVectorField {
 	 */
 	public void generateGeometriesList() {
 
+		geometriesList.clear();
 		for (Object o: this.geometries) {
 			MasonGeometry mg = (MasonGeometry) o;
 			geometriesList.add(mg);

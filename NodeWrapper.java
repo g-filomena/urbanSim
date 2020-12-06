@@ -1,4 +1,4 @@
-package sim.app.geo.urbanSim;
+package sim.app.geo.UrbanSim;
 
 import sim.util.geo.GeomPlanarGraphDirectedEdge;
 
