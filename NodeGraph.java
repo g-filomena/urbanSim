@@ -231,8 +231,7 @@ public class NodeGraph extends Node
 
 			if (this != destinationNode) {
 				double cost = nodesDistance(dualNode, destinationNode);
-				if ((previousJunction != null) && ((previousJunction == dualNode.primalEdge.u) ||
-						(previousJunction == dualNode.primalEdge.v))) continue;
+				if ((previousJunction != null) && ((previousJunction == dualNode.primalEdge.u) || (previousJunction == dualNode.primalEdge.v))) continue;
 
 				if (cost < distance) {
 					distance = cost;

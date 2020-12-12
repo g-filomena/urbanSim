@@ -40,6 +40,9 @@ public class SubGraph extends Graph
 	public SubGraph(Graph parentGraph, ArrayList<EdgeGraph> edges) {
 		this.parentGraph = parentGraph;
 		for (EdgeGraph edge: edges) addFromOtherGraph(parentGraph, edge);
+		for (NodeGraph node : this.getNodesList()) {
+			node.setNeighbouringComponents();
+		}
 	}
 
 	public SubGraph() {

@@ -23,8 +23,8 @@ public class EdgeGraph extends GeomPlanarGraphEdge {
 	public double deflectionDegrees;
 	public MasonGeometry masonGeometry;
 
-	public int RD, AC, RL, AL;
-	public int LL, GL;
+	public int RD, AC, RL, AL, LL, GL;
+	public int RB, BB, RBB;
 
 	public NodeGraph u, v;
 	public NodeGraph dualNode;
@@ -119,8 +119,8 @@ public class EdgeGraph extends GeomPlanarGraphEdge {
 	 */
 	public void resetDensities() {
 
-		RD = AC = RL = AL = 0;
-		LL = GL = 0;
+		RD = AC = RL = AL = LL = GL = 0;
+		RB = BB = RBB = 0;
 	}
 
 
