@@ -14,5 +14,5 @@ public class Building {
 	public NodeGraph node;
 	public double localLandmarkness;
 	public double globalLandmarkness;
-
+	public String DMA;
 }

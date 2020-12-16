@@ -2,6 +2,7 @@ package sim.app.geo.UrbanSim;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,6 +36,7 @@ public class EdgeGraph extends GeomPlanarGraphEdge {
 	List<Integer> waterBodies = new ArrayList<Integer>();
 	List<Integer> parks = new ArrayList<Integer>();
 
+	public HashMap<String, Integer> densities = new HashMap<String, Integer>();
 	public Map<String, AttributeValue> attributes;
 
 	/**
@@ -121,6 +123,7 @@ public class EdgeGraph extends GeomPlanarGraphEdge {
 
 		RD = AC = RL = AL = LL = GL = 0;
 		RB = BB = RBB = 0;
+		for (String key : densities.keySet()) densities.replace(key, 0);
 	}
 
 

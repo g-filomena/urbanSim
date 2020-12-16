@@ -192,7 +192,6 @@ public class Graph extends GeomPlanarGraph
 	 * @param percentile the percentile use to identify salient nodes;
 	 */
 	public Map<NodeGraph, Double> salientNodesWithinSpace(NodeGraph node, NodeGraph otherNode, double percentile) {
-
 		ArrayList<NodeGraph> containedNodes = new ArrayList<NodeGraph>();
 		Geometry smallestEnclosingCircle = NodeGraph.nodesEnclosingCircle(node, otherNode);
 		containedNodes = this.getContainedNodes(smallestEnclosingCircle);
@@ -364,8 +363,8 @@ public class Graph extends GeomPlanarGraph
 				node.distances.add(building.geometry.distance(nodeGeometry.geometry));
 			}
 		});
-		ArrayList<MasonGeometry> sightLinesGeometries = sightLines.geometriesList;
 
+		ArrayList<MasonGeometry> sightLinesGeometries = sightLines.geometriesList;
 		for (MasonGeometry sl : sightLinesGeometries) {
 			Building building = buildingsMap.get(sl.getIntegerAttribute("buildingID"));
 			NodeGraph node = nodesMap.get(sl.getIntegerAttribute("nodeID"));

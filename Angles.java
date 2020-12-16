@@ -23,7 +23,7 @@ public class Angles {
 	 * @param originNode the first node;
 	 * @param destinationNode the second node;
 	 */
-	public static double angle(NodeGraph originNode, NodeGraph destinationNode) 	{
+	public static double angle(NodeGraph originNode, NodeGraph destinationNode) {
 		Coordinate origin = originNode.getCoordinate();
 		Coordinate destination = destinationNode.getCoordinate();
 		double [] vectorA = {(origin.x-origin.x), (origin.y-(origin.y + 2000))};
