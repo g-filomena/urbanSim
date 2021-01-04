@@ -28,7 +28,7 @@ public class SubGraph extends Graph
 	private SubGraphEdgesMap subGraphEdgesMap = new SubGraphEdgesMap();
 	private ArrayList<Integer> graphBarriers = new ArrayList<Integer>();
 	LinkedHashMap<NodeGraph, Double> centralityMap = new LinkedHashMap<NodeGraph, Double>();
-	Graph parentGraph;
+	Graph parentGraph = new Graph();
 
 	/**
 	 * The SubGraph constructor, when passing the parent graph and the list of EdgeGraphs in the parent graph that should be included in the
@@ -38,7 +38,7 @@ public class SubGraph extends Graph
 	 * @param edges the list of edges to include.
 	 */
 	public SubGraph(Graph parentGraph, ArrayList<EdgeGraph> edges) {
-		this.parentGraph = parentGraph;
+		//		this.parentGraph = parentGraph;
 		for (EdgeGraph edge: edges) addFromOtherGraph(parentGraph, edge);
 		for (NodeGraph node : this.getNodesList()) {
 			node.setNeighbouringComponents();

@@ -2,9 +2,9 @@ package sim.app.geo.UrbanSim;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -27,7 +27,8 @@ public class NodeGraph extends Node
 
 	public NodeGraph(Coordinate pt) {super(pt);}
 
-	public int nodeID, region;
+	public int nodeID;
+	public int region = 999999;
 	public boolean gateway;
 
 	public MasonGeometry masonGeometry;
@@ -42,9 +43,9 @@ public class NodeGraph extends Node
 
 	public List<Integer> adjacentRegions = new ArrayList<Integer>();
 	public ArrayList<NodeGraph> adjacentEntries = new ArrayList<NodeGraph>();
-	public ArrayList<NodeGraph> adjacentNodes = new ArrayList<NodeGraph>();
-	public ArrayList<EdgeGraph> edges = new ArrayList<EdgeGraph>();
-	public ArrayList<GeomPlanarGraphDirectedEdge> outEdges = new ArrayList<GeomPlanarGraphDirectedEdge>();
+	private ArrayList<NodeGraph> adjacentNodes = new ArrayList<NodeGraph>();
+	private ArrayList<EdgeGraph> edges = new ArrayList<EdgeGraph>();
+	private ArrayList<GeomPlanarGraphDirectedEdge> outEdges = new ArrayList<GeomPlanarGraphDirectedEdge>();
 
 	/**
 	 * It sets the ID of the node;
@@ -71,13 +72,21 @@ public class NodeGraph extends Node
 	}
 
 	/**
+	 * It returns the list of the NodeGraphs that are reachable from this node;
+	 *
+	 */
+	public ArrayList<NodeGraph> getAdjacentNodes() {
+		return this.adjacentNodes;
+	}
+
+	/**
 	 * It sets some list useful for identifying the neighbouring components of this node.
 	 *
 	 */
 	public void setNeighbouringComponents() {
 		setEdgesNode();
-		this.adjacentNodes = getAdjacentNodes();
-		List<DirectedEdge> outEdges  = this.getOutEdges().getEdges();
+		setAdjacentNodes();
+		List<Object> out = new ArrayList<Object>(this.getOutEdges().getEdges());
 		for (DirectedEdge e: outEdges) this.outEdges.add((GeomPlanarGraphDirectedEdge) e);
 	}
 
@@ -96,30 +105,29 @@ public class NodeGraph extends Node
 	 */
 	private void setEdgesNode() {
 		ArrayList<EdgeGraph> edges = new ArrayList<EdgeGraph>();
-		List<Object> out = this.getOutEdges().getEdges();
-		Set<Object> outEdges = new HashSet<Object>(out);
+		List<Object> out = new ArrayList<Object>(this.getOutEdges().getEdges());
 
-		for (Object o : outEdges) {
+		for (Object o : out) {
 			EdgeGraph edge = (EdgeGraph) ((GeomPlanarGraphDirectedEdge) o).getEdge();
-			edges.add(edge);
+			if (!edges.contains(edge)) edges.add(edge);
 		}
 		this.edges = edges;
 	}
 
 	/**
-	 * It returns a list of all the adjacent nodes to this node (i.e. sharing an edge with this node).
+	 * It identifies a list of all the adjacent nodes to this node (i.e. sharing an edge with this node).
+	 * @return
 	 *
 	 */
-	public ArrayList<NodeGraph> getAdjacentNodes()
+	private void setAdjacentNodes()
 	{
 		ArrayList<NodeGraph> adjacentNodes = new ArrayList<NodeGraph>();
-		ArrayList<EdgeGraph> edges = getEdges();
 
-		for (EdgeGraph e : edges) {
+		for (EdgeGraph e : this.edges) {
 			NodeGraph opposite = (NodeGraph) e.getOppositeNode(this);
 			adjacentNodes.add(opposite);
 		}
-		return adjacentNodes;
+		this.adjacentNodes = adjacentNodes;
 	}
 
 	/**
@@ -154,7 +162,7 @@ public class NodeGraph extends Node
 	{
 		if (!this.gateway) return null;
 
-		ArrayList<NodeGraph> oppositeNodes = new ArrayList<NodeGraph>(this.getAdjacentNodes());
+		ArrayList<NodeGraph> oppositeNodes = new ArrayList<NodeGraph>(this.adjacentNodes);
 		ArrayList<Integer> adjacentRegions = new ArrayList<Integer>();
 
 		for (NodeGraph opposite : oppositeNodes) {
@@ -207,7 +215,7 @@ public class NodeGraph extends Node
 	}
 
 	/**
-	 * It returns a node in the dual representation of the graph, which represent a segment departing from this node (a node in a dual graph represents
+	 * It returns a node in the dual representation of the graph, which represents a segment departing from this node (a node in a dual graph represents
 	 * an actual street segment).
 	 * When the node for which the dual-node is desired the originNode of a desired route, the segment closest to the destination is chosen (~ towards it).
 	 * When the node for which the dual-node is desired is the destinationNode, the segment closest to the origin is chosen.
@@ -219,28 +227,35 @@ public class NodeGraph extends Node
 	 */
 	public NodeGraph getDualNode(NodeGraph originNode, NodeGraph destinationNode, boolean regionBasedNavigation, NodeGraph previousJunction)
 	{
-		NodeGraph dualNode = null;
 		double distance = Double.MAX_VALUE;
 		NodeGraph best = null;
+		NodeGraph dualNode = null;
+		ArrayList<EdgeGraph> edges = new ArrayList<EdgeGraph>(this.edges);
+		double cost;
 
-		for (EdgeGraph edge : this.getEdges()) {
-
-			if ((edge.region == 999999) && (regionBasedNavigation)) continue; // bridge between regions
+		for (EdgeGraph edge : edges) {
+			if (edge.region == 999999 && regionBasedNavigation) continue;
 			dualNode = edge.getDual();
 			if (dualNode == null) continue;
 
-			if (this != destinationNode) {
-				double cost = nodesDistance(dualNode, destinationNode);
-				if ((previousJunction != null) && ((previousJunction == dualNode.primalEdge.u) || (previousJunction == dualNode.primalEdge.v))) continue;
-
+			if (this.equals(destinationNode)) {
+				cost = nodesDistance(edge.getOtherNode(this), originNode);
 				if (cost < distance) {
 					distance = cost;
 					best = dualNode;
 				}
 			}
-			else
-			{
-				double cost = nodesDistance(dualNode, originNode);
+			else {
+				cost = nodesDistance(edge.getOtherNode(this), destinationNode);
+
+				if ((previousJunction != null) && ((previousJunction == dualNode.primalEdge.u) || (previousJunction == dualNode.primalEdge.v))) continue;
+				if (regionBasedNavigation) {
+					ArrayList<EdgeGraph> nextEdges =  new ArrayList<EdgeGraph>(edge.getOtherNode(originNode).getEdges());
+					nextEdges.remove(edge);
+					boolean bridges = true;
+					for (EdgeGraph next : nextEdges) if (next.region != 999999) bridges = false;
+					if (bridges) continue;
+				}
 				if (cost < distance) {
 					distance = cost;
 					best = dualNode;
@@ -248,6 +263,55 @@ public class NodeGraph extends Node
 			}
 		}
 		return best;
+	}
+
+	/**
+	 * It returns a map of nodes in the dual representation of the graph, which represent segments departing from this node (a node in a dual graph represents
+	 * an actual street segment).
+	 * When the node for which the dual-nodes are desired the originNode of a desired route, the map is sorted on the basis of the distance from the dual nodes
+	 * (segments' centroids) to the destination node (~ towards it).
+	 * When the node for which the dual-nodes are desired is the destinationNode, the map is sorted on the basis of the distance from the dual nodes
+	 * (segments' centroids) to the origin node.
+	 *
+	 * This function is preferable to the one above as it allows considering multiple segments as possible "departures" for route planning algorithms.
+	 * When computing paths within subgraphs, some specific segments may be indeed unreachable.
+	 *
+	 * @param originNode the originNode of the desired route;
+	 * @param destinationNode the originNode of the desired route;
+	 * @param regionBasedNavigation if the agent is navigating through regions;
+	 * @param previousJunction to avoid to chose dual nodes representing segments that should not be traversed;
+	 */
+	public Map<NodeGraph, Double> getDualNodes(NodeGraph originNode, NodeGraph destinationNode, boolean regionBasedNavigation, NodeGraph previousJunction)
+	{
+		HashMap<NodeGraph, Double> dualNodes = new HashMap<NodeGraph, Double>();
+		NodeGraph dualNode = null;
+		ArrayList<EdgeGraph> edges = new ArrayList<EdgeGraph>(this.edges);
+
+		for (EdgeGraph edge : edges) {
+			if (edge.region == 999999 && regionBasedNavigation) continue;
+			dualNode = edge.getDual();
+			if (dualNode == null) continue;
+
+			if (this.equals(destinationNode)) {
+				double cost = nodesDistance(edge.getOtherNode(this), originNode);
+				dualNodes.put(dualNode, cost);
+			}
+			else {
+				double cost = nodesDistance(edge.getOtherNode(this), destinationNode);
+
+				if ((previousJunction != null) && ((previousJunction == dualNode.primalEdge.u) || (previousJunction == dualNode.primalEdge.v))) continue;
+				if (regionBasedNavigation) {
+					ArrayList<EdgeGraph> nextEdges =  new ArrayList<EdgeGraph>(edge.getOtherNode(originNode).getEdges());
+					nextEdges.remove(edge);
+					boolean bridges = true;
+					for (EdgeGraph next : nextEdges) if (next.region != 999999) bridges = false;
+					if (bridges) continue;
+				}
+				dualNodes.put(dualNode, cost);
+			}
+		}
+
+		return Utilities.sortByValue(dualNodes, false);
 	}
 }
 
