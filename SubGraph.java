@@ -88,11 +88,11 @@ public class SubGraph extends Graph
 	 */
 	private class SubGraphNodesMap 		{
 		public HashMap<NodeGraph, NodeGraph> map = new HashMap<NodeGraph, NodeGraph>();
-		public void add(NodeGraph node, NodeGraph parentNode) 		{
+		private void add(NodeGraph node, NodeGraph parentNode) 	{
 			map.put(node, parentNode);
 		}
-		public NodeGraph findParent(NodeGraph nodeSubGraph) {return map.get(nodeSubGraph);}
-		public NodeGraph findChild(NodeGraph nodeGraph) {return Utilities.getKeyFromValue(map, nodeGraph);}
+		private NodeGraph findParent(NodeGraph nodeSubGraph) {return map.get(nodeSubGraph);}
+		private NodeGraph findChild(NodeGraph nodeGraph) {return Utilities.getKeyFromValue(map, nodeGraph);}
 	}
 
 	/**
@@ -106,8 +106,8 @@ public class SubGraph extends Graph
 			map.put(edge, parentEdge);
 		}
 
-		public EdgeGraph findParent(EdgeGraph edgeSubGraph) {return map.get(edgeSubGraph);}
-		public EdgeGraph findChild(EdgeGraph edgeSubGraph) {return Utilities.getKeyFromValue(map, edgeSubGraph);}
+		private EdgeGraph findParent(EdgeGraph edgeSubGraph) {return map.get(edgeSubGraph);}
+		private EdgeGraph findChild(EdgeGraph edgeSubGraph) {return Utilities.getKeyFromValue(map, edgeSubGraph);}
 	}
 
 	/**
@@ -268,7 +268,7 @@ public class SubGraph extends Graph
 	 */
 	public void generateSubGraphCentralityMap() {
 		LinkedHashMap<NodeGraph, Double> centralityMap = new LinkedHashMap<NodeGraph, Double>();
-		Collection<NodeGraph> nodes = this.subGraphNodesMap.map.values();
+		Collection<NodeGraph> nodes = this.subGraphNodesMap.map.keySet();
 		for (NodeGraph n: nodes) 	{
 			NodeGraph parentNode = this.getParentNode(n);
 			centralityMap.put(n, parentNode.centrality);

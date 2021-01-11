@@ -13,8 +13,8 @@ import sim.util.geo.GeomPlanarGraphDirectedEdge;
  */
 public class Path {
 
-	public ArrayList<GeomPlanarGraphDirectedEdge> edges;
-	public HashMap<NodeGraph, NodeWrapper> mapWrappers;
+	public ArrayList<GeomPlanarGraphDirectedEdge> edges = new ArrayList<GeomPlanarGraphDirectedEdge>();
+	public HashMap<NodeGraph, NodeWrapper> mapWrappers = new HashMap<NodeGraph, NodeWrapper>();
 
 	/**
 	 * It identifies the previous junction traversed in a dual graph path, so to avoid traversing in the actual primal graph an unecessary segment.
@@ -70,5 +70,10 @@ public class Path {
 		if ((edge.u == otherEdge.u) | (edge.u == otherEdge.v)) return edge.u;
 		else if ((edge.v == otherEdge.v) | (edge.v == otherEdge.u)) return edge.v;
 		else return null;
+	}
+
+	public void invalidPath() {
+		this.edges.clear();
+		this.mapWrappers.clear();
 	}
 }
