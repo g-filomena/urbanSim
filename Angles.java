@@ -1,4 +1,4 @@
-package sim.app.geo.UrbanSim;
+package sim.app.geo.urbanmason;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;

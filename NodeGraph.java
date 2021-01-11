@@ -1,4 +1,4 @@
-package sim.app.geo.UrbanSim;
+package sim.app.geo.urbanmason;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,6 +14,9 @@ import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.planargraph.DirectedEdge;
 import com.vividsolutions.jts.planargraph.Node;
 
+import sim.app.geo.urbanmason.Building;
+import sim.app.geo.urbanmason.EdgeGraph;
+import sim.app.geo.urbanmason.Utilities;
 import sim.util.geo.GeomPlanarGraphDirectedEdge;
 import sim.util.geo.MasonGeometry;
 

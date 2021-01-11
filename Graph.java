@@ -1,4 +1,4 @@
-package sim.app.geo.UrbanSim;
+package sim.app.geo.urbanmason;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -107,7 +107,6 @@ public class Graph extends GeomPlanarGraph
 	 * @param pt the coordinates;
 	 * @note Override as the original methods returns a Node.
 	 */
-	@Override
 	public NodeGraph getNode(Coordinate pt) {
 
 		NodeGraph node = findNode(pt);

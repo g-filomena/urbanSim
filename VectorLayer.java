@@ -1,4 +1,4 @@
-package sim.app.geo.UrbanSim;
+package sim.app.geo.urbanmason;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +8,8 @@ import com.vividsolutions.jts.algorithm.ConvexHull;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.index.quadtree.Quadtree;
 
 import sim.field.geo.GeomVectorField;
 import sim.util.Bag;
@@ -22,7 +24,8 @@ public class VectorLayer extends GeomVectorField {
 
 	private static final long serialVersionUID = 1L;
 	public ArrayList<MasonGeometry> geometriesList = new ArrayList<MasonGeometry>();
-
+	private Quadtree layerSpatialIndex = new Quadtree();
+	private GeometryFactory layerGeomFactory = new GeometryFactory();
 
 	public VectorLayer() {
 		super();
@@ -38,8 +41,10 @@ public class VectorLayer extends GeomVectorField {
 		super();
 
 		for (Object o : geometries) {
-			MasonGeometry f = (MasonGeometry) o;
-			this.addGeometry(f);
+			MasonGeometry mg = (MasonGeometry) o;
+			this.addGeometry(mg);
+			Envelope e = mg.getGeometry().getEnvelopeInternal();
+			layerSpatialIndex.insert(e, mg);
 		}
 		generateGeometriesList();
 	}
@@ -54,7 +59,7 @@ public class VectorLayer extends GeomVectorField {
 		Bag intersectingObjects = new Bag();
 		Envelope e = inputGeometry.getEnvelopeInternal();
 		e.expandBy(java.lang.Math.max(e.getHeight(),e.getWidth()) * 0.01 );
-		List<?> gList = spatialIndex.query(e);
+		List<?> gList = layerSpatialIndex.query(e);
 
 		for (Object o: gList) {
 			MasonGeometry mg = (MasonGeometry) o;
@@ -72,7 +77,7 @@ public class VectorLayer extends GeomVectorField {
 		Bag containedObjects = new Bag();
 		Envelope e = inputGeometry.getEnvelopeInternal();
 		e.expandBy(java.lang.Math.max(e.getHeight(),e.getWidth()) * 0.01 );
-		List<?> gList = spatialIndex.query(e);
+		List<?> gList = layerSpatialIndex.query(e);
 
 		for (Object o: gList) {
 			MasonGeometry mg = (MasonGeometry) o;
@@ -92,7 +97,7 @@ public class VectorLayer extends GeomVectorField {
 		Bag objects = new Bag();
 		Envelope e = inputGeometry.getEnvelopeInternal();
 		e.expandBy(upperLimit);
-		List<?> gList = spatialIndex.query(e);
+		List<?> gList = layerSpatialIndex.query(e);
 
 		for (Object o: gList) {
 			MasonGeometry mg = (MasonGeometry) o;
@@ -114,7 +119,7 @@ public class VectorLayer extends GeomVectorField {
 		Envelope e = inputGeometry.getEnvelopeInternal();
 		e.expandBy(radius);
 
-		List<?> gList = spatialIndex.query(e);
+		List<?> gList = layerSpatialIndex.query(e);
 
 		for (Object o: gList) {
 			MasonGeometry mg = (MasonGeometry) o;
@@ -135,7 +140,7 @@ public class VectorLayer extends GeomVectorField {
 
 		Bag objects = new Bag();
 
-		for (Object o : geometries) {
+		for (Object o : this.getGeometries()) {
 			MasonGeometry mg = (MasonGeometry) o;
 			Integer attribute = mg.getIntegerAttribute(attributeName);
 			if (!equal && !attribute.equals(attributeValue)) objects.add(mg);
@@ -154,7 +159,7 @@ public class VectorLayer extends GeomVectorField {
 	public Bag filterFeatures(String attributeName, String attributeValue, boolean equal) {
 		Bag objects = new Bag();
 
-		for (Object o : geometries) {
+		for (Object o : this.getGeometries()) {
 			MasonGeometry mg = (MasonGeometry) o;
 			String attribute = mg.getStringAttribute(attributeName);
 			if (!equal && !attribute.equals(attributeValue)) objects.add(mg);
@@ -173,7 +178,7 @@ public class VectorLayer extends GeomVectorField {
 	public Bag filterFeatures(String attributeName, List<String> listValues, boolean equal) {
 		Bag objects = new Bag();
 
-		for (Object o : geometries) {
+		for (Object o : this.getGeometries()) {
 			MasonGeometry mg = (MasonGeometry) o;
 			String attribute = mg.getStringAttribute(attributeName);
 			if (!equal && !listValues.contains(attribute)) objects.add(mg);
@@ -190,7 +195,7 @@ public class VectorLayer extends GeomVectorField {
 	public List<Integer> getIntColumn(String attributeName) {
 		List<Integer> values = new ArrayList<Integer>();
 
-		for (Object o : geometries) {
+		for (Object o : this.getGeometries()) {
 			MasonGeometry mg = (MasonGeometry) o;
 			Integer attribute = mg.getIntegerAttribute(attributeName);
 			values.add(attribute);
@@ -210,7 +215,7 @@ public class VectorLayer extends GeomVectorField {
 	public VectorLayer selectFeatures(String attributeName, List<Integer> listValues, boolean equal) {
 		Bag objects = new Bag();
 
-		for (Object o : geometries) {
+		for (Object o : this.getGeometries()) {
 			MasonGeometry mg = (MasonGeometry) o;
 			Integer attribute = mg.getIntegerAttribute(attributeName);
 			if (!equal && !listValues.contains(attribute)) objects.add(mg);
@@ -227,14 +232,14 @@ public class VectorLayer extends GeomVectorField {
 	public Geometry layerConvexHull() {
 		ArrayList<Coordinate> pts = new ArrayList<Coordinate>();
 
-		for (Object o : geometries) {
+		for (Object o : this.getGeometries()) {
 			Geometry g = ((MasonGeometry) o).geometry;
 			Coordinate c[] = g.getCoordinates();
 			pts.addAll(Arrays.asList(c));
 		}
 
 		Coordinate[] coords = pts.toArray(new Coordinate[pts.size()]);
-		ConvexHull convexHull = new ConvexHull(coords, this.geomFactory);
+		ConvexHull convexHull = new ConvexHull(coords, this.layerGeomFactory);
 		return convexHull.getConvexHull();
 	}
 
@@ -246,8 +251,8 @@ public class VectorLayer extends GeomVectorField {
 	 */
 	public void setID(String attributeName) {
 
-		for (Object o : geometries) {
-			MasonGeometry mg = ((MasonGeometry) o);
+		for (Object o : this.getGeometries()) {
+			MasonGeometry mg = (MasonGeometry) o;
 			mg.setUserData(mg.getIntegerAttribute(attributeName));
 		}
 	}
@@ -262,13 +267,13 @@ public class VectorLayer extends GeomVectorField {
 	public Bag intersection(VectorLayer otherLayer, boolean inclusive) {
 
 		Bag intersecting = new Bag();
-		for (Object o : otherLayer.geometries) {
+		for (Object o : otherLayer.getGeometries()) {
 			Bag tmp = this.intersectingFeatures((Geometry) o);
 			intersecting.addAll(tmp);
 		}
 		if (inclusive) return intersecting;
 		else {
-			Bag notIntersecting = otherLayer.geometries;
+			Bag notIntersecting = otherLayer.getGeometries();
 			notIntersecting.removeAll(intersecting);
 			return notIntersecting;
 		}
@@ -283,7 +288,7 @@ public class VectorLayer extends GeomVectorField {
 
 		Envelope e = inputGeometry.getEnvelopeInternal();
 		e.expandBy(java.lang.Math.max(e.getHeight(),e.getWidth()) * 0.01 );
-		List<?> gList = spatialIndex.query(e);
+		List<?> gList = layerSpatialIndex.query(e);
 
 		for (Object o: gList) {
 			MasonGeometry mg = (MasonGeometry) o;
@@ -299,9 +304,12 @@ public class VectorLayer extends GeomVectorField {
 	public void generateGeometriesList() {
 
 		geometriesList.clear();
-		for (Object o: this.geometries) {
+		layerSpatialIndex = new Quadtree();
+		for (Object o: this.getGeometries()) {
 			MasonGeometry mg = (MasonGeometry) o;
 			geometriesList.add(mg);
+			Envelope e = mg.getGeometry().getEnvelopeInternal();
+			layerSpatialIndex.insert(e, mg);
 		}
 	}
 }

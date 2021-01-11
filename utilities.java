@@ -1,4 +1,4 @@
-package sim.app.geo.UrbanSim;
+package sim.app.geo.urbanmason;
 
 import java.util.ArrayList;
 import java.util.Collections;
