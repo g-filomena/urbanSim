@@ -42,11 +42,19 @@ public class VectorLayer extends GeomVectorField {
 
 		for (Object o : geometries) {
 			MasonGeometry mg = (MasonGeometry) o;
-			this.addGeometry(mg);
+			super.addGeometry(mg);
 			Envelope e = mg.getGeometry().getEnvelopeInternal();
 			layerSpatialIndex.insert(e, mg);
 		}
 		generateGeometriesList();
+	}
+
+	@Override
+	public void addGeometry(MasonGeometry mg)
+	{
+		super.addGeometry(mg);
+		Envelope e = mg.getGeometry().getEnvelopeInternal();
+		layerSpatialIndex.insert(e, mg);
 	}
 
 	/**

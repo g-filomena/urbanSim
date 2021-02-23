@@ -339,8 +339,9 @@ public class Graph extends GeomPlanarGraph
 
 		Collection<NodeGraph> nodes = nodesMap.values();
 
-		nodes.forEach((node) -> {
+		for (NodeGraph node : nodes) {
 			MasonGeometry nodeGeometry = node.masonGeometry;
+
 			Bag containedLandmarks = globalLandmarks.featuresWithinDistance(node.masonGeometry.geometry, radiusAnchors);
 			List<Double> gScores = new ArrayList<Double>();
 
@@ -361,7 +362,7 @@ public class Graph extends GeomPlanarGraph
 				node.anchors.add(buildingsMap.get(buildingID));
 				node.distances.add(building.geometry.distance(nodeGeometry.geometry));
 			}
-		});
+		}
 
 		ArrayList<MasonGeometry> sightLinesGeometries = sightLines.geometriesList;
 		for (MasonGeometry sl : sightLinesGeometries) {
