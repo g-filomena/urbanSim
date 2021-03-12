@@ -1,4 +1,4 @@
-package sim.app.geo.urbanmason;
+package urbanmason.main;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,7 +14,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 import sim.util.Bag;
 import sim.util.geo.MasonGeometry;
-
 
 /**
  * A class of various utilities.

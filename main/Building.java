@@ -1,4 +1,4 @@
-package sim.app.geo.urbanmason;
+package urbanmason.main;
 import sim.util.geo.MasonGeometry;
 
 /**
